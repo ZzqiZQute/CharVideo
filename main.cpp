@@ -125,7 +125,12 @@ int main(int argc, char *argv[])
         errorCode=ErrorCode::FFMPEGNOTFOUND;
         goto ERROR;
     }
-    if(argc==2){
+
+    if(argc>=2&&argc<=3){
+        QString outputFile="";
+        if(argc==3){
+           outputFile=QString(argv[2]);
+        }
         QFile video(argv[1]);
         QDir currentDir;
         QDir tempDir(currentDir.path()+"/"+video.fileName()+"_tempdir");
@@ -136,7 +141,11 @@ int main(int argc, char *argv[])
             currentDir.mkdir(tempDir.path());
         }
         if(video.exists()){
-            cout<<"视频路径:"<<currentDir.absoluteFilePath(video.fileName()).toStdString()<<endl<<endl;
+            cout<<"输入文件:"<<video.fileName().toStdString()<<endl;
+            if(outputFile!="")
+            cout<<"输出文件:"<<outputFile.toStdString()<<endl<<endl;
+            else
+            cout<<"输出文件:"<<video.fileName().mid(0,video.fileName().lastIndexOf('.')).toStdString()+"_charvideo.mp4"<<endl<<endl;
             cout<<++step<<".设置方法（0:灰度方法，1:二值化方法，默认0）:";
             fgets(input,20,stdin);
             size_t size=strlen(input)-1;
@@ -580,7 +589,10 @@ int main(int argc, char *argv[])
                     }
                     arguments<<"-pix_fmt";
                     arguments<<"yuv420p";
-                    arguments<<currentDir.absolutePath()+"/"+video.fileName().mid(0,video.fileName().lastIndexOf('.'))+"_charvideo.mp4";
+                    if(outputFile!="")
+                        arguments<<currentDir.absolutePath()+"/"+outputFile;
+                    else
+                        arguments<<currentDir.absolutePath()+"/"+video.fileName().mid(0,video.fileName().lastIndexOf('.'))+"_charvideo.mp4";
                     arguments<<"-y";
                     ffmpeg.start("ffmpeg",arguments);
                     ffmpeg.waitForFinished(-1);
@@ -595,7 +607,7 @@ int main(int argc, char *argv[])
             goto ERROR;
         }}
     else{
-        cout<<"用法: ./CharVideo <文件名>"<<endl;
+        cout<<"用法: ./CharVideo <输入文件名> [输出文件名]"<<endl;
         cout<<endl;
         errorCode=FILENOTSELECT;
     }
