@@ -16,7 +16,7 @@ class SetBCDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit SetBCDialog(QWidget *parent,QStringList filePath,int charWidth,int charHeight,int finalWidth,int finalHeight,int style,char* usedChar,int charcount);
+    explicit SetBCDialog(QWidget *parent,QStringList filePath,int charWidth,int charHeight,int finalWidth,int finalHeight,int style,char* usedChar,int charcount,int * stretch);
     ~SetBCDialog();
 
     int brightness() const;
@@ -47,6 +47,7 @@ private:
     int mStyle;
     char* mUsedChar;
     int mCharCount;
+    int* mStretch;
     void drawPic();
 };
 

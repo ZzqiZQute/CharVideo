@@ -439,12 +439,12 @@ int main(int argc, char *argv[])
                     int milli=t2.at(1).toInt();
                     double totaltime=hour*3600+minute*60+second+milli/100.0;
                     cout<<"视频大小:"<<videoWidth<<"x"<<videoHeight<<" 帧率:"<<videoFPS<<"fps 视频长度:"<<totaltime<<"秒"<<endl<<endl;;
-                    cout<<++step<<".输入字符高度(偶数，默认10):";
+                    cout<<++step<<".输入字符高度(偶数，默认12):";
                     fgets(input,20,stdin);
                     size=strlen(input)-1;
                     temp=QString::fromLatin1(input,static_cast<int>(size));
                     int charHeight=temp.toInt();
-                    if(charHeight==0)charHeight=10;
+                    if(charHeight==0)charHeight=12;
                     charHeight=charHeight/2*2;
                     int charWidth=charHeight/2;
                     finalWidth=videoWidth/charHeight*charHeight;
@@ -471,6 +471,17 @@ int main(int argc, char *argv[])
                         size_t t=(i+1)*sizeof(characters2)/(static_cast<size_t>(charcount+1));
                         if(t>=sizeof(characters2))t=sizeof(characters2)-1;
                         usedChar[i]=characters2[t];
+                    }
+                    QFont font;
+                    font.setPixelSize(static_cast<int>(charHeight*0.85));
+                    QFontMetrics fm(font);
+                    int * stretch=new int[128];
+                    for(int i=0;i<128;i++){
+                        char c=static_cast<char>(i);
+                        int width=fm.boundingRect(QChar(c)).width();
+                        if(width>charWidth)
+                            stretch[i]=charWidth*100/width;
+                        else stretch[i]=100;
                     }
                     cout<<endl;
                     currentPrintDot=0;
@@ -522,10 +533,11 @@ int main(int argc, char *argv[])
                     for(QString file:jpgFile){
                         jpgFilePath<<tempDir.absolutePath()+"/"+file;
                     }
+
                     cout<<++step<<".设置亮度与对比度(按回车键继续):";
                     char newline[2];
                     fgets(newline,2,stdin);
-                    SetBCDialog dialog(nullptr,jpgFilePath,charWidth,charHeight,finalWidth,finalHeight,style,usedChar,charcount);
+                    SetBCDialog dialog(nullptr,jpgFilePath,charWidth,charHeight,finalWidth,finalHeight,style,usedChar,charcount,stretch);
                     int result=dialog.exec();
                     if(result==QDialog::Rejected){
                         tempDir.removeRecursively();
@@ -540,12 +552,13 @@ int main(int argc, char *argv[])
                     ++step;
 #pragma omp parallel for
                     for(int n=0;n<count;n++){
-                        QImage outImage=Converter::convert(jpgFilePath,n,charWidth,charHeight,finalWidth,finalHeight,style,brightness,contrast,usedChar,charcount);
+                        QImage outImage=Converter::convert(jpgFilePath,n,charWidth,charHeight,finalWidth,finalHeight,style,brightness,contrast,usedChar,charcount,stretch);
                         outImage.save(QString("%1/char_%2.jpg").arg(tempDir.absolutePath()).arg(n,9,10,QChar('0')));
                         completeCnt++;
 #pragma omp critical
                         cout<<"\033[u\033[2K"<<step<<".正在并行处理 已处理"<<completeCnt<<"帧/共"<<count<<"帧"<<endl;
                     }
+                                        delete[] stretch;
 
                     cout<<"\033[u\033[2K"<<step<<".正在并行处理 已处理"<<count<<"帧/共"<<count<<"帧"<<endl;
                     cout<<endl;

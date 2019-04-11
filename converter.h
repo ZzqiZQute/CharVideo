@@ -7,7 +7,7 @@ class Converter
 {
 public:
     Converter();
-    static QImage convert(QStringList filePath, int index, int charWidth, int charHeight, int finalWidth, int finalHeight, int style, int brightness, int contrast, char*usedChar, int charcount);
+    static QImage convert(QStringList filePath, int index, int charWidth, int charHeight, int finalWidth, int finalHeight, int style, int brightness, int contrast, char*usedChar, int charcount,int* stretch);
 };
 
 #endif // CONVERTER_H
