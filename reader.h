@@ -5,11 +5,11 @@
 #include <QProcess>
 #include <QSize>
 #include <QTimer>
-class Base : public QObject
+class Reader : public QObject
 {
     Q_OBJECT
 public:
-    explicit Base(QObject *parent = nullptr);
+    explicit Reader(QObject *parent = nullptr);
 
     QProcess *process() const;
     void setProcess(QProcess *process);

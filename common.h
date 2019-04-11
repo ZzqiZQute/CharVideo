@@ -4,7 +4,7 @@
 #define FILTER_COUNT 1
 static const char characters[TOTALCHARCOUNT+1]=" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 static const char characters2[TOTALCHARCOUNT+1]="M@NWH#R$%&EKQBXDUm8AFPhk4g5GOSVZdfw269bp0Yanq3CJTy*L[]esux?Ijz7or1ilv{|}+()=\\t/c!<>\":_~',-^.;` ";
-static const unsigned char characters3[]="MMMMMMM@@@@@@@WWWWWWWWWBBBBBBBB000000008888888ZZZZZZZZZaZaaaaaa2222222SSSSSSSXXXXXXXXXXX7777777rrrrrrr;;;;;;;;iiiiiiiii:::::::,:,,,,,,.........       ";
+static const char characters3[]="M@NWH#R$%&EKQBXDUm8AFPhk4g5GOSVZdfw269bp0Yanq3CJTy*L[]esux?Ijz7or1ilv{|}+()=\\t/c!<>\":_~',-^.;` ";
 static const unsigned char code[TOTALCHARCOUNT][16]={
 {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,},
 {0x00,0x00,0x00,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x00,0x00,0x18,0x18,0x00,0x00,},
@@ -103,5 +103,8 @@ static const unsigned char code[TOTALCHARCOUNT][16]={
 {0x30,0x4C,0x43,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,},
 };
 
+static double getValue(double min,double max,int v){
+    return v*(max-min)/100.0+min;
+}
 
 #endif // COMMON_H

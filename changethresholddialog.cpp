@@ -6,6 +6,7 @@ ChangeThresholdDialog::ChangeThresholdDialog(QWidget *parent, QStringList filePa
     ui(new Ui::ChangeThresholdDialog)
 {
     ui->setupUi(this);
+    setWindowState(Qt::WindowMaximized);
     mIndex=0;
     mFilePath=filePath;
     mCount=filePath.count();

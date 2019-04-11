@@ -4,7 +4,7 @@
 #include <QFile>
 #include <QDebug>
 #include <QProcess>
-#include "base.h"
+#include "reader.h"
 #include "changethresholddialog.h"
 #include "picdata.h"
 #include "common.h"
@@ -15,6 +15,8 @@
 #include <QDateTime>
 #include <pthread.h>
 #include <unistd.h>
+#include "setbcdialog.h"
+#include "converter.h"
 using namespace std;
 static enum ErrorCode{
     OK,
@@ -88,7 +90,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     QDateTime time;
-    Base base;
+    Reader reader;
     int videoWidth;
     int videoHeight;
     int method;
@@ -100,11 +102,13 @@ int main(int argc, char *argv[])
     int completeCnt=0;
     char input[20];
     int count;
+    int brightness;
+    int contrast;
     QStringList arguments;
     QProcess ffmpeg;
     system("reset");
     cout<<endl;
-    cout<<"\033[33m";
+    cout<<"\033[34m";
     cout<<"   ________              _    ___     __"<<endl;
     cout<<"  / ____/ /_  ____ _____| |  / (_)___/ /__  ____"<<endl;
     cout<<" / /   / __ \\/ __ `/ ___/ | / / / __  / _ \\/ __ \\"<<endl;
@@ -112,7 +116,7 @@ int main(int argc, char *argv[])
     cout<<"\\____/_/ /_/\\__,_/_/    |___/_/\\__,_/\\___/\\____/"<<endl;
     cout<<"\033[0m";
     cout<<endl;
-    cout<<"----------------Using \033[3m\033[92mQt\033[0m & \033[3m\033[91mFFMpeg\033[0m-----------------"<<endl;
+    cout<<"-------------Powered By \033[3m\033[92mQt\033[0m & \033[3m\033[91mFFMpeg\033[0m--------------"<<endl;
     cout<<endl;
     QFile ffmpegExe1("./ffmpeg");
     QFile ffmpegExe2("/usr/bin/ffmpeg");
@@ -146,8 +150,8 @@ int main(int argc, char *argv[])
                 pthread_t thread;
                 pthread_create(&thread,nullptr,printThread,&++step);
                 QProcess ffmpeg;
-                base.setProcess(&ffmpeg);
-                base.connect(&ffmpeg,SIGNAL(readyReadStandardError()),&base,SLOT(onReadyReadStandardError()));
+                reader.setProcess(&ffmpeg);
+                reader.connect(&ffmpeg,SIGNAL(readyReadStandardError()),&reader,SLOT(onReadyReadStandardError()));
                 arguments<<"-i";
                 arguments<<currentDir.absoluteFilePath(video.fileName());
                 arguments<<tempDir.absolutePath()+"/%09d.jpg";
@@ -159,7 +163,7 @@ int main(int argc, char *argv[])
                 filters<<"*.jpg";
                 QStringList jpgFile=tempDir.entryList(filters);
                 count=jpgFile.count();
-                QString msg(base.buffer());
+                QString msg(reader.buffer());
                 QRegExp sizeReg("\\d{2,4}x\\d{2,4}");
                 QRegExp fpsReg("\\d{1,4} fps(?=,)");
                 int sizeIdx=sizeReg.indexIn(msg);
@@ -184,7 +188,7 @@ int main(int argc, char *argv[])
                     errorCode=ErrorCode::FILECORRUPT;
                     goto ERROR;
                 }
-                base.disconnect();
+                reader.disconnect();
                 currentPrintDot=0;
                 status=2;
                 cout<<"\033[s";
@@ -192,7 +196,7 @@ int main(int argc, char *argv[])
                 arguments.clear();
                 arguments<<"-i";
                 arguments<<currentDir.absoluteFilePath(video.fileName());
-                arguments<<tempDir.absolutePath()+"/sound.wav";
+                arguments<<tempDir.absolutePath()+"/sound.aac";
                 arguments<<"-y";
                 ffmpeg.start("ffmpeg",arguments);
                 ffmpeg.waitForFinished(-1);
@@ -214,7 +218,9 @@ int main(int argc, char *argv[])
                 ChangeThresholdDialog dialog(nullptr,jpgFilePath);
                 int result=dialog.exec();
                 if(result==QDialog::Rejected){
+                    tempDir.removeRecursively();
                     errorCode=ErrorCode::USERCANCEL;
+                    cout<<endl;
                     goto ERROR;
                 }
                 int threshold=dialog.threshold();
@@ -345,14 +351,15 @@ int main(int argc, char *argv[])
                     }
                     QImage outImage(finalWidth,finalHeight,QImage::Format_Grayscale8);
                     QPainter painter(&outImage);
-                    painter.setRenderHint(QPainter::TextAntialiasing);
                     if(style==0)
                         painter.fillRect(outImage.rect(),Qt::white);
                     else {
                         painter.fillRect(outImage.rect(),Qt::black);
                     }
                     QFont font;
-                    font.setPointSize(charWidth);
+                    font.setFamily("Monospace");
+                    font.setPointSize(charHeight-1);
+                    painter.setFont(font);
                     painter.setFont(font);
                     if(style!=0){
                         painter.setPen(QPen(Qt::white));
@@ -382,7 +389,7 @@ int main(int argc, char *argv[])
                 arguments<<tempDir.absolutePath()+"/char_%9d.jpg";
                 if(hasSound){
                     arguments<<"-i";
-                    arguments<<tempDir.absolutePath()+"/sound.wav";
+                    arguments<<tempDir.absolutePath()+"/sound.aac";
                 }
                 arguments<<"-pix_fmt";
                 arguments<<"yuv420p";
@@ -391,21 +398,20 @@ int main(int argc, char *argv[])
                 ffmpeg.start("ffmpeg",arguments);
                 ffmpeg.waitForFinished(-1);
                 pthread_cancel(thread);
-
                 tempDir.removeRecursively();
                 cout<<endl<<"完成,共计用时"<<time.msecsTo(QDateTime::currentDateTime())/1000.0<<"秒"<<endl<<endl;
                 exit(0);
             }
 
             else if(method==0){
-                base.setProcess(&ffmpeg);
-                base.connect(&ffmpeg,SIGNAL(readyReadStandardError()),&base,SLOT(onReadyReadStandardError()));
+                reader.setProcess(&ffmpeg);
+                reader.connect(&ffmpeg,SIGNAL(readyReadStandardError()),&reader,SLOT(onReadyReadStandardError()));
                 arguments.clear();
                 arguments<<"-i";
                 arguments<<currentDir.absoluteFilePath(video.fileName());
                 ffmpeg.start("ffmpeg",arguments);
                 ffmpeg.waitForFinished(-1);
-                QString msg(base.buffer());
+                QString msg(reader.buffer());
                 QRegExp sizeReg("\\d{2,4}x\\d{2,4}");
                 QRegExp fpsReg("\\d{1,4} fps(?=,)");
                 QRegExp durationReg("\\d{2}:\\d{2}:\\d{2}.\\d{2}");
@@ -415,7 +421,7 @@ int main(int argc, char *argv[])
                 int fpsLength=fpsReg.matchedLength();
                 int durationIdx=durationReg.indexIn(msg);
                 int durationLength=durationReg.matchedLength();
-                base.disconnect();
+                reader.disconnect();
                 if(sizeIdx!=-1&&fpsIdx!=-1&&durationIdx!=-1){
                     QString temp=msg.mid(sizeIdx,sizeLength);
                     QStringList t=temp.split("x");
@@ -432,15 +438,14 @@ int main(int argc, char *argv[])
                     int second=t2.at(0).toInt();
                     int milli=t2.at(1).toInt();
                     double totaltime=hour*3600+minute*60+second+milli/100.0;
-                    cout<<"视频大小:"<<videoWidth<<"x"<<videoHeight<<"帧 帧率:"<<videoFPS<<"fps 视频长度:"<<totaltime<<"秒"<<endl<<endl;;
-                    cout<<++step<<".输入字符高度(4的倍数，默认12):";
+                    cout<<"视频大小:"<<videoWidth<<"x"<<videoHeight<<" 帧率:"<<videoFPS<<"fps 视频长度:"<<totaltime<<"秒"<<endl<<endl;;
+                    cout<<++step<<".输入字符高度(偶数，默认10):";
                     fgets(input,20,stdin);
                     size=strlen(input)-1;
                     temp=QString::fromLatin1(input,static_cast<int>(size));
                     int charHeight=temp.toInt();
-                    if(charHeight==0)charHeight=12;
-                    else if(charHeight<4)charHeight=4;
-                    else charHeight=charHeight/4*4;
+                    if(charHeight==0)charHeight=10;
+                    charHeight=charHeight/2*2;
                     int charWidth=charHeight/2;
                     finalWidth=videoWidth/charHeight*charHeight;
                     finalHeight=videoHeight/charHeight*charHeight;
@@ -453,13 +458,28 @@ int main(int argc, char *argv[])
                     int style=temp.toInt();
                     if(style!=1)style=0;
                     cout<<endl;
+                    cout<<++step<<".输入使用字符个数(最小为2,最大为"<<sizeof(characters2)-1<<",默认15):";
+                    fgets(input,20,stdin);
+                    size=strlen(input)-1;
+                    temp=QString::fromLatin1(input,static_cast<int>(size));
+                    int charcount=temp.toInt();
+                    if(charcount==0)charcount=15;
+                    else if(charcount<2)charcount=2;
+                    else if(charcount>static_cast<int>(sizeof(characters2)-1))charcount=static_cast<int>(sizeof(characters2)-1);
+                    char *usedChar=new char[charcount];
+                    for(size_t i=0;i<static_cast<size_t>(charcount);i++){
+                        size_t t=(i+1)*sizeof(characters2)/(static_cast<size_t>(charcount+1));
+                        if(t>=sizeof(characters2))t=sizeof(characters2)-1;
+                        usedChar[i]=characters2[t];
+                    }
+                    cout<<endl;
                     currentPrintDot=0;
                     status=1;
                     cout<<"\033[s";
                     pthread_t thread;
                     pthread_create(&thread,nullptr,printThread,&++step);
-                    base.setProcess(&ffmpeg);
-                    base.connect(&ffmpeg,SIGNAL(readyReadStandardError()),&base,SLOT(onReadyReadStandardError()));
+                    reader.setProcess(&ffmpeg);
+                    reader.connect(&ffmpeg,SIGNAL(readyReadStandardError()),&reader,SLOT(onReadyReadStandardError()));
                     arguments.clear();
                     arguments<<"-i";
                     arguments<<currentDir.absoluteFilePath(video.fileName());
@@ -476,7 +496,7 @@ int main(int argc, char *argv[])
                         errorCode=ErrorCode::FILECORRUPT;
                         goto ERROR;
                     }
-                    base.disconnect();
+                    reader.disconnect();
                     pthread_cancel(thread);
                     cout<<endl;
                     currentPrintDot=0;
@@ -486,7 +506,7 @@ int main(int argc, char *argv[])
                     arguments.clear();
                     arguments<<"-i";
                     arguments<<currentDir.absoluteFilePath(video.fileName());
-                    arguments<<tempDir.absolutePath()+"/sound.wav";
+                    arguments<<tempDir.absolutePath()+"/sound.aac";
                     arguments<<"-y";
                     ffmpeg.start("ffmpeg",arguments);
                     ffmpeg.waitForFinished(-1);
@@ -502,108 +522,25 @@ int main(int argc, char *argv[])
                     for(QString file:jpgFile){
                         jpgFilePath<<tempDir.absolutePath()+"/"+file;
                     }
+                    cout<<++step<<".设置亮度与对比度(按回车键继续):";
+                    char newline[2];
+                    fgets(newline,2,stdin);
+                    SetBCDialog dialog(nullptr,jpgFilePath,charWidth,charHeight,finalWidth,finalHeight,style,usedChar,charcount);
+                    int result=dialog.exec();
+                    if(result==QDialog::Rejected){
+                        tempDir.removeRecursively();
+                        errorCode=ErrorCode::USERCANCEL;
+                        goto ERROR;
+                    }
+                    brightness=dialog.brightness();
+                    contrast=dialog.contrast();
+                    cout<<endl;
                     time=QDateTime::currentDateTime();
                     cout<<"\033[s";
                     ++step;
 #pragma omp parallel for
                     for(int n=0;n<count;n++){
-                        //提取灰度图片
-                        QPixmap pixmap(jpgFilePath[n]);
-                        QImage image=pixmap.toImage();
-                        QImage grayImage(image.width(),image.height(),QImage::Format_Grayscale8);
-                        int width=image.width();
-                        int height=image.height();
-                        for(int i=0;i<height;i++){
-                            unsigned char* data=image.scanLine(i);
-                            unsigned char* data2=grayImage.scanLine(i);
-                            for(int j=0;j<width;j++){
-                                int red=*(data+4*j);
-                                int green=*(data+4*j+1);
-                                int blue=*(data+4*j+2);
-                                int gray= (red*30 +green*59 +blue*11 + 50) / 100;
-                                *(data2+j)=static_cast<unsigned char>(gray);
-                            }
-                        }
-
-                        //膨胀处理
-                        for(int k=0;k<FILTER_COUNT;k++){
-                            unsigned char* oridata=grayImage.bits();
-                            unsigned char* tempdata=new unsigned char[width*height];
-                            int bpl=grayImage.bytesPerLine();
-                            for(int i=1;i<height-1;i++)
-                                for(int j=1;j<width-1;j++){
-                                    unsigned char t=maxValue(9,
-                                                             oridata[(i-1)*bpl+j-1],
-                                                    oridata[(i)*bpl+j-1],
-                                                    oridata[(i+1)*bpl+j-1],
-                                                    oridata[(i-1)*bpl+j],
-                                                    oridata[(i)*bpl+j],
-                                                    oridata[(i+1)*bpl+j],
-                                                    oridata[(i-1)*bpl+j+1],
-                                                    oridata[(i)*bpl+j+1],
-                                                    oridata[(i+1)*bpl+j+1]
-                                                    );
-                                    tempdata[i*bpl+j]=t;
-                                }
-                            //memset(oridata,0,static_cast<size_t>(width*height));
-                            memcpy(oridata,tempdata,static_cast<size_t>(width*height));
-                            delete[] tempdata;
-                        }
-
-                        //按字符大小裁剪窗口
-                        int ww=finalWidth/charWidth;
-                        int hh=finalHeight/charHeight;
-                        QList<PicData*> data;
-                        for(int j=0;j<hh;j++)
-                            for(int i=0;i<ww;i++)
-                            {
-                                PicData* pic=new PicData(charWidth,charHeight);
-                                for(int a=0;a<charHeight;a++)
-                                {
-                                    unsigned char* picdata=grayImage.scanLine(j*charHeight+a);
-                                    for(int b=0;b<charWidth;b++)
-                                    {
-                                        int pass=i*charWidth+b;
-
-                                        pic->setData(b,a,*(picdata+pass));
-                                    }
-                                }
-                                data<<pic;
-                            }
-
-                        QByteArray list;
-                        //匹配
-                        for(int i=0;i<data.length();i++){
-                            PicData* d=data.at(i);
-                            int t=0;
-                            for(int j=0;j<charWidth*charHeight;j++){
-                                t+=d->getData(j/charHeight,j%charHeight);
-                            }
-                            t=t/(charWidth*charHeight);
-                            int s=static_cast<int>(sizeof(characters3))*t/256;
-
-                            list.append(static_cast<char>(characters3[s]));
-                        }
-                        QImage outImage(finalWidth,finalHeight,QImage::Format_Grayscale8);
-                        QPainter painter(&outImage);
-                        painter.setRenderHint(QPainter::TextAntialiasing);
-                        if(style==0)
-                            painter.fillRect(outImage.rect(),Qt::white);
-                        else {
-                            painter.fillRect(outImage.rect(),Qt::black);
-                        }
-                        QFont font;
-                        font.setPointSize(charWidth);
-                        painter.setFont(font);
-                        if(style!=0){
-                            painter.setPen(QPen(Qt::white));
-                        }
-                        int k=0;
-                        for(int i=0;i<hh;i++)
-                            for(int j=0;j<ww;j++){
-                                painter.drawText(j*charWidth,(i+1)*charHeight,QString(list.at(k)));
-                                k++;
-                            }
+                        QImage outImage=Converter::convert(jpgFilePath,n,charWidth,charHeight,finalWidth,finalHeight,style,brightness,contrast,usedChar,charcount);
                         outImage.save(QString("%1/char_%2.jpg").arg(tempDir.absolutePath()).arg(n,9,10,QChar('0')));
                         completeCnt++;
 #pragma omp critical
@@ -612,6 +549,7 @@ int main(int argc, char *argv[])
 
                     cout<<"\033[u\033[2K"<<step<<".正在并行处理 已处理"<<count<<"帧/共"<<count<<"帧"<<endl;
                     cout<<endl;
+                    delete[] usedChar;
                     cout<<"\033[s";
                     currentPrintDot=0;
                     status=0;
@@ -625,7 +563,7 @@ int main(int argc, char *argv[])
                     arguments<<tempDir.absolutePath()+"/char_%9d.jpg";
                     if(hasSound){
                         arguments<<"-i";
-                        arguments<<tempDir.absolutePath()+"/sound.wav";
+                        arguments<<tempDir.absolutePath()+"/sound.aac";
                     }
                     arguments<<"-pix_fmt";
                     arguments<<"yuv420p";
@@ -634,7 +572,8 @@ int main(int argc, char *argv[])
                     ffmpeg.start("ffmpeg",arguments);
                     ffmpeg.waitForFinished(-1);
                     pthread_cancel(thread);
-                }        tempDir.removeRecursively();
+                }
+                tempDir.removeRecursively();
                 cout<<endl<<"完成,共计用时"<<time.msecsTo(QDateTime::currentDateTime())/1000.0<<"秒"<<endl<<endl;
                 exit(0);
             }

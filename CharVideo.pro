@@ -15,9 +15,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
         main.cpp \
-    base.cpp \
     changethresholddialog.cpp \
-    picdata.cpp
+    picdata.cpp \
+    reader.cpp \
+    setbcdialog.cpp \
+    converter.cpp
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -25,14 +27,17 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
-    base.h \
     changethresholddialog.h \
     common.h \
-    picdata.h
+    picdata.h \
+    reader.h \
+    setbcdialog.h \
+    converter.h
 
 LIBS+= -lgomp -lpthread
 
 QMAKE_CXXFLAGS+= -fopenmp
 
 FORMS += \
-    changethresholddialog.ui
+    changethresholddialog.ui \
+    setbcdialog.ui
