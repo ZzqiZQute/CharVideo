@@ -94,7 +94,8 @@ void SetBCDialog::setBrightness(int brightness)
 void SetBCDialog::drawPic()
 {
     ui->lbHint->setText(QString("第%1张/共%2张").arg(mIndex+1).arg(mCount));
-    QImage outImage=Converter::convert(mFilePath,mIndex,mCharWidth,mCharHeight,mFinalWidth,mFinalHeight,mStyle,mBrightness,mContrast,mUsedChar,mCharCount,mStretch);
+    QByteArray charValue;
+    QImage outImage=Converter::convert(mFilePath,mIndex,mCharWidth,mCharHeight,mFinalWidth,mFinalHeight,mStyle,mBrightness,mContrast,mUsedChar,mCharCount,mStretch,&charValue);
     mScene->clear();
     mScene->setBackgroundBrush(QBrush(Qt::lightGray));
     mScene->addPixmap(QPixmap::fromImage(outImage));

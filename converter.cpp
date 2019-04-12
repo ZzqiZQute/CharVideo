@@ -9,7 +9,7 @@ Converter::Converter()
 
 }
 
-QImage Converter::convert(QStringList filePath, int index, int charWidth, int charHeight, int finalWidth, int finalHeight, int style, int brightness, int contrast, char *usedChar,int charcount,int* stretch)
+QImage Converter::convert(QStringList filePath, int index, int charWidth, int charHeight, int finalWidth, int finalHeight, int style, int brightness, int contrast, char *usedChar,int charcount,int* stretch,QByteArray* value)
 {
     QPixmap pixmap(filePath[index]);
     QImage image=pixmap.toImage();
@@ -129,8 +129,8 @@ QImage Converter::convert(QStringList filePath, int index, int charWidth, int ch
             data<<pic;
         }
 
-    QByteArray list;
     //匹配
+    value->clear();
     for(int i=0;i<data.length();i++){
         PicData* d=data.at(i);
         int t=0;
@@ -139,7 +139,7 @@ QImage Converter::convert(QStringList filePath, int index, int charWidth, int ch
         }
         t=t/(charWidth*charHeight);
         char s=usedChar[t*charcount/256];
-        list.append(s);
+        value->append(s);
     }
     QImage outImage(finalWidth,finalHeight,QImage::Format_Grayscale8);
     QPainter painter(&outImage);
@@ -158,7 +158,7 @@ QImage Converter::convert(QStringList filePath, int index, int charWidth, int ch
     int k=0;
     for(int i=0;i<hh;i++)
         for(int j=0;j<ww;j++){
-            char c=list.at(k);
+            char c=value->at(k);
             font.setStretch(stretch[static_cast<int>(c)]);
             painter.setFont(font);
             painter.drawText(QRect(j*charWidth,i*charHeight,charWidth,charHeight),Qt::AlignCenter,QString(c));

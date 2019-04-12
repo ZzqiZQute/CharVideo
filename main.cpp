@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include "setbcdialog.h"
 #include "converter.h"
+#include <QSettings>
 using namespace std;
 static enum ErrorCode{
     OK,
@@ -129,23 +130,31 @@ int main(int argc, char *argv[])
     if(argc>=2&&argc<=3){
         QString outputFile="";
         if(argc==3){
-           outputFile=QString(argv[2]);
+            outputFile=QString(argv[2]);
         }
         QFile video(argv[1]);
         QDir currentDir;
-        QDir tempDir(currentDir.path()+"/"+video.fileName()+"_tempdir");
-        if(!tempDir.exists()){
-            currentDir.mkdir(tempDir.path());
-        }else{
-            tempDir.removeRecursively();
-            currentDir.mkdir(tempDir.path());
-        }
         if(video.exists()){
             cout<<"输入文件:"<<video.fileName().toStdString()<<endl;
             if(outputFile!="")
-            cout<<"输出文件:"<<outputFile.toStdString()<<endl<<endl;
+                cout<<"输出文件:"<<outputFile.toStdString()<<endl;
             else
-            cout<<"输出文件:"<<video.fileName().mid(0,video.fileName().lastIndexOf('.')).toStdString()+"_charvideo.mp4"<<endl<<endl;
+                cout<<"输出文件:"<<video.fileName().mid(0,video.fileName().lastIndexOf('.')).toStdString()+"_charvideo.mp4"<<endl;
+            QDir tempDir(currentDir.path()+"/"+video.fileName()+"_tempdir");
+            if(!tempDir.exists()){
+                currentDir.mkdir(tempDir.path());
+            }else{
+                tempDir.removeRecursively();
+                currentDir.mkdir(tempDir.path());
+            }
+            QDir txtDir(outputFile==""?video.fileName().mid(0,video.fileName().lastIndexOf('.'))+"_txt":outputFile.mid(0,outputFile.lastIndexOf('.'))+"_char");
+            cout<<"输出txt及音频目录(灰度方法):"<<txtDir.absolutePath().toStdString()<<endl<<endl;
+            if(!txtDir.exists()){
+                currentDir.mkdir(txtDir.path());
+            }else{
+                txtDir.removeRecursively();
+                currentDir.mkdir(txtDir.path());
+            }
             cout<<++step<<".设置方法（0:灰度方法，1:二值化方法，默认0）:";
             fgets(input,20,stdin);
             size_t size=strlen(input)-1;
@@ -535,6 +544,8 @@ int main(int argc, char *argv[])
                         cout<<"\033[31m未正确提取出音频，将生成无音频字符视频\033[0m"<<endl<<endl;
                         hasSound=false;
                     }else{
+                        QFile sound(tempDir.absolutePath()+"/sound.aac");
+                        sound.copy(txtDir.absolutePath()+"/sound.aac");
                         cout<<endl;
                     }
                     pthread_cancel(thread);
@@ -542,7 +553,13 @@ int main(int argc, char *argv[])
                     for(QString file:jpgFile){
                         jpgFilePath<<tempDir.absolutePath()+"/"+file;
                     }
-
+                    int ww=finalWidth/charWidth;
+                    int hh=finalHeight/charHeight;
+                    QSettings settings(txtDir.absolutePath()+"/settings.conf",QSettings::NativeFormat);
+                    settings.setValue("fps",videoFPS);
+                    settings.setValue("width",ww);
+                    settings.setValue("height",hh);
+                    settings.sync();
                     cout<<++step<<".设置亮度与对比度(按回车键继续):";
                     char newline[2];
                     fgets(newline,2,stdin);
@@ -561,13 +578,25 @@ int main(int argc, char *argv[])
                     ++step;
 #pragma omp parallel for
                     for(int n=0;n<count;n++){
-                        QImage outImage=Converter::convert(jpgFilePath,n,charWidth,charHeight,finalWidth,finalHeight,style,brightness,contrast,usedChar,charcount,stretch);
+                        QByteArray charValue;
+                        QImage outImage=Converter::convert(jpgFilePath,n,charWidth,charHeight,finalWidth,finalHeight,style,brightness,contrast,usedChar,charcount,stretch,&charValue);
                         outImage.save(QString("%1/char_%2.jpg").arg(tempDir.absolutePath()).arg(n,9,10,QChar('0')));
+                        QString txtPath=QString("%1/char_%2.txt").arg(txtDir.absolutePath()).arg(n,9,10,QChar('0'));
+                        QFile txtFile(txtPath);
+                        if(txtFile.exists())txtFile.remove();
+                        txtFile.open(QFile::WriteOnly);
+                        QTextStream stream(&txtFile);
+                        for(int i=0;i<hh;i++){
+                            stream<<charValue.mid(i*ww,ww);
+                            stream<<endl;
+                        }
+                        txtFile.close();
+
                         completeCnt++;
 #pragma omp critical
                         cout<<"\033[u\033[2K"<<step<<".正在并行处理 已处理"<<completeCnt<<"帧/共"<<count<<"帧"<<endl;
                     }
-                                        delete[] stretch;
+                    delete[] stretch;
 
                     cout<<"\033[u\033[2K"<<step<<".正在并行处理 已处理"<<count<<"帧/共"<<count<<"帧"<<endl;
                     cout<<endl;
