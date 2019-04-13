@@ -24,18 +24,18 @@ input()
 os.system('clear')
 if hassound:
     sound = subprocess.Popen(['mpv', './sound.aac'], stdout=null, stderr=null)
-fileidx = 0
+firsttime = time.time()
 while True:
-    currenttime = time.time()
-    filepath = './char_%09d.txt' % fileidx
+    os.system('clear')
+    currenttime=time.time()
+    idx=int((currenttime-firsttime)/interval)
+    filepath = './char_%09d.txt' % idx
     if (os.path.exists(filepath)):
         with open(filepath, 'r') as f:
             r=f.readline()
             while len(r) >0:
                 print(r,end='')
                 r=f.readline()
-        fileidx += 1
     else:
         break
-    while(time.time()-currenttime<interval):
-        pass
+    time.sleep(0.01)
