@@ -41,3 +41,6 @@ QMAKE_CXXFLAGS+= -fopenmp
 FORMS += \
     changethresholddialog.ui \
     setbcdialog.ui
+
+RESOURCES += \
+    resource.qrc

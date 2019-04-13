@@ -457,17 +457,27 @@ int main(int argc, char *argv[])
                     int milli=t2.at(1).toInt();
                     double totaltime=hour*3600+minute*60+second+milli/100.0;
                     cout<<"视频大小:"<<videoWidth<<"x"<<videoHeight<<" 帧率:"<<videoFPS<<"fps 视频长度:"<<totaltime<<"秒"<<endl<<endl;;
-                    cout<<++step<<".输入字符高度(偶数，默认12):";
+                    cout<<++step<<".输入字符高度(偶数，默认16):";
                     fgets(input,20,stdin);
                     size=strlen(input)-1;
                     temp=QString::fromLatin1(input,static_cast<int>(size));
                     int charHeight=temp.toInt();
-                    if(charHeight==0)charHeight=12;
+                    if(charHeight==0)charHeight=16;
                     charHeight=charHeight/2*2;
                     int charWidth=charHeight/2;
                     finalWidth=videoWidth/charHeight*charHeight;
                     finalHeight=videoHeight/charHeight*charHeight;
-                    cout<<"字符宽度:"<<charWidth<<" 字符高度:"<<charHeight<<" 输出宽度:"<<finalWidth<<" 输出高度:"<<finalHeight<<endl<<endl;;
+                    int ww=finalWidth/charWidth;
+                    int hh=finalHeight/charHeight;
+                    cout<<"字符宽度:"<<charWidth<<" 字符高度:"<<charHeight<<" 输出宽度:"<<finalWidth<<" 输出高度:"<<finalHeight<<" 终端字符横向数量:"<<ww<<" 终端字符纵向数量:"<<hh<<endl<<endl;;
+                    QFile playpy(":/script/playpy");
+                    QFile playpyfile(txtDir.absolutePath()+"/play.py");
+                    playpy.open(QFile::ReadOnly);
+                    playpyfile.open(QFile::WriteOnly);
+                    playpyfile.write(playpy.readAll());
+                    playpy.close();
+                    playpyfile.close();
+                    system(std::string("chmod +x "+txtDir.absolutePath().toStdString()+"/play.py").c_str());
                     QList<QByteArray> charList;
                     cout<<++step<<".输入样式(0:白底黑字，1:黑底白字，默认0):";
                     fgets(input,20,stdin);
@@ -553,8 +563,6 @@ int main(int argc, char *argv[])
                     for(QString file:jpgFile){
                         jpgFilePath<<tempDir.absolutePath()+"/"+file;
                     }
-                    int ww=finalWidth/charWidth;
-                    int hh=finalHeight/charHeight;
                     QSettings settings(txtDir.absolutePath()+"/settings.conf",QSettings::NativeFormat);
                     settings.setValue("fps",videoFPS);
                     settings.setValue("width",ww);
