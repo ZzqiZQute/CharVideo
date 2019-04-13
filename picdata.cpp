@@ -38,3 +38,14 @@ void PicData::print()
    }
 }
 
+QColor PicData::getColor() const
+{
+    return mColor;
+}
+
+void PicData::setColor(const QColor &color)
+{
+    mColor = color;
+}
+
+

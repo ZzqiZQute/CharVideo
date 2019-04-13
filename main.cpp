@@ -100,6 +100,8 @@ int main(int argc, char *argv[])
     int finalWidth = 0;
     int finalHeight = 0;
     bool hasSound=true;
+    bool colorVideo=false;
+    bool colorTerminal=false;
     int completeCnt=0;
     char input[20];
     int count;
@@ -479,7 +481,7 @@ int main(int argc, char *argv[])
                     playpyfile.close();
                     system(std::string("chmod +x "+txtDir.absolutePath().toStdString()+"/play.py").c_str());
                     QList<QByteArray> charList;
-                    cout<<++step<<".输入样式(0:白底黑字，1:黑底白字，默认0):";
+                    cout<<++step<<".输入样式(0:白底，1:黑底，默认0):";
                     fgets(input,20,stdin);
                     size=strlen(input)-1;
                     temp=QString::fromLatin1(input,static_cast<int>(size));
@@ -568,36 +570,83 @@ int main(int argc, char *argv[])
                     settings.setValue("width",ww);
                     settings.setValue("height",hh);
                     settings.sync();
+                    cout<<++step<<".是否生成彩色视频(y/N):";
+                    fgets(input,20,stdin);
+                    size=strlen(input)-1;
+                    temp=QString::fromLatin1(input,static_cast<int>(size));
+                    if(temp=="y"||temp=="Y"){
+                        colorVideo=true;
+                    }
+                    cout<<endl;
                     cout<<++step<<".设置亮度与对比度(按回车键继续):";
                     char newline[2];
                     fgets(newline,2,stdin);
-                    SetBCDialog dialog(nullptr,jpgFilePath,charWidth,charHeight,finalWidth,finalHeight,style,usedChar,charcount,stretch);
-                    int result=dialog.exec();
+                    QList<QColor> colors;
+                    SetBCDialog *dialog;
+                    if(colorVideo)
+                        dialog=new SetBCDialog(nullptr,jpgFilePath,charWidth,charHeight,finalWidth,finalHeight,style,usedChar,charcount,stretch,&colors);
+                    else
+                        dialog=new SetBCDialog(nullptr,jpgFilePath,charWidth,charHeight,finalWidth,finalHeight,style,usedChar,charcount,stretch,nullptr);
+                    int result=dialog->exec();
                     if(result==QDialog::Rejected){
                         tempDir.removeRecursively();
                         errorCode=ErrorCode::USERCANCEL;
                         goto ERROR;
                     }
-                    brightness=dialog.brightness();
-                    contrast=dialog.contrast();
+                    brightness=dialog->brightness();
+                    contrast=dialog->contrast();
+                    delete dialog;
                     cout<<endl;
+
+                    if(colorVideo){
+                    cout<<++step<<".是否生成纯彩色控制台文本(y/N):";
+                    fgets(input,20,stdin);
+                    size=strlen(input)-1;
+                    temp=QString::fromLatin1(input,static_cast<int>(size));
+                    if(temp=="y"||temp=="Y"){
+                        colorTerminal=true;
+                    }
+                    cout<<endl;
+                    }
                     time=QDateTime::currentDateTime();
                     cout<<"\033[s";
                     ++step;
 #pragma omp parallel for
                     for(int n=0;n<count;n++){
                         QByteArray charValue;
-                        QImage outImage=Converter::convert(jpgFilePath,n,charWidth,charHeight,finalWidth,finalHeight,style,brightness,contrast,usedChar,charcount,stretch,&charValue);
+                        QList<QColor> color;
+                        QImage outImage;
+                        if(colorVideo)
+                             outImage=Converter::convert(jpgFilePath,n,charWidth,charHeight,finalWidth,finalHeight,style,brightness,contrast,usedChar,charcount,stretch,&charValue,&color);
+                        else
+                             outImage=Converter::convert(jpgFilePath,n,charWidth,charHeight,finalWidth,finalHeight,style,brightness,contrast,usedChar,charcount,stretch,&charValue,nullptr);
                         outImage.save(QString("%1/char_%2.jpg").arg(tempDir.absolutePath()).arg(n,9,10,QChar('0')));
                         QString txtPath=QString("%1/char_%2.txt").arg(txtDir.absolutePath()).arg(n,9,10,QChar('0'));
                         QFile txtFile(txtPath);
                         if(txtFile.exists())txtFile.remove();
                         txtFile.open(QFile::WriteOnly);
                         QTextStream stream(&txtFile);
+                        if(style==0)stream<<"\033[107m";
+                        else if(style==1)stream<<"\033[40m";
+                        if(!colorVideo)
                         for(int i=0;i<hh;i++){
                             stream<<charValue.mid(i*ww,ww);
                             stream<<endl;
+                        }else{
+                            int k=0;
+                            for(int i=0;i<hh;i++){
+                                for(int j=0;j<ww;j++){
+                                    QColor c=color.at(k);
+                                    if(colorTerminal)
+                                    stream<<QString("\033[48;2;%1;%2;%3m%4").arg(c.red()).arg(c.green()).arg(c.blue()).arg(' ');
+                                    else
+                                    stream<<QString("\033[38;2;%1;%2;%3m%4").arg(c.red()).arg(c.green()).arg(c.blue()).arg(charValue.at(i*ww+j));
+                                    k++;
+                                }
+                                stream<<endl;
+                            }
                         }
+                        stream<<"\033[0m";
                         txtFile.close();
 
                         completeCnt++;

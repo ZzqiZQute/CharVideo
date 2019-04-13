@@ -4,12 +4,13 @@
 #include <QPainter>
 #include <QFont>
 #include <QPixmap>
+#include <QDebug>
 Converter::Converter()
 {
 
 }
 
-QImage Converter::convert(QStringList filePath, int index, int charWidth, int charHeight, int finalWidth, int finalHeight, int style, int brightness, int contrast, char *usedChar,int charcount,int* stretch,QByteArray* value)
+QImage Converter::convert(QStringList filePath, int index, int charWidth, int charHeight, int finalWidth, int finalHeight, int style, int brightness, int contrast, char *usedChar,int charcount,int* stretch,QByteArray* value,QList<QColor>* color)
 {
     QPixmap pixmap(filePath[index]);
     QImage image=pixmap.toImage();
@@ -56,9 +57,9 @@ QImage Converter::convert(QStringList filePath, int index, int charWidth, int ch
         unsigned char* data=enhancedImage.scanLine(i);
         unsigned char* data2=grayImage.scanLine(i);
         for(int j=0;j<width;j++){
-            int red=*(data+4*j);
+            int blue=*(data+4*j);
             int green=*(data+4*j+1);
-            int blue=*(data+4*j+2);
+            int red=*(data+4*j+2);
             int gray= (red*30 +green*59 +blue*11 + 50) / 100;
             *(data2+j)=static_cast<unsigned char>(gray);
         }
@@ -86,7 +87,6 @@ QImage Converter::convert(QStringList filePath, int index, int charWidth, int ch
 //            line[j]=static_cast<unsigned char>(0.5+255*prob2[line[j]]);
 //        }
 //    }
-//    return grayImage;
     unsigned long graysum=0;
     for(int i=0;i<height;i++){
         for(int j=0;j<width;j++)
@@ -107,27 +107,43 @@ QImage Converter::convert(QStringList filePath, int index, int charWidth, int ch
         }
     }
 
-
     //按字符大小裁剪窗口
     int ww=finalWidth/charWidth;
     int hh=finalHeight/charHeight;
     QList<PicData*> data;
+
     for(int j=0;j<hh;j++)
         for(int i=0;i<ww;i++)
         {
             PicData* pic=new PicData(charWidth,charHeight);
+            double red=0;
+            double green=0;
+            double blue=0;
             for(int a=0;a<charHeight;a++)
             {
                 unsigned char* picdata=grayImage.scanLine(j*charHeight+a);
+                unsigned char* colorpicdata=enhancedImage.scanLine(j*charHeight+a);
                 for(int b=0;b<charWidth;b++)
                 {
                     int pass=i*charWidth+b;
-
+                    blue+=*(colorpicdata+pass*4);
+                    green+=*(colorpicdata+pass*4+1);
+                    red+=*(colorpicdata+pass*4+2);
                     pic->setData(b,a,*(picdata+pass));
                 }
             }
+            red/=(charWidth*charHeight);
+            green/=(charWidth*charHeight);
+            blue/=(charWidth*charHeight);
+            pic->setColor(QColor(static_cast<int>(red),static_cast<int>(green),static_cast<int>(blue)));
             data<<pic;
         }
+    if(color!=nullptr){
+        color->clear();
+        for(PicData* d:data){
+            color->append(d->getColor());
+        }
+    }
 
     //匹配
     value->clear();
@@ -141,7 +157,11 @@ QImage Converter::convert(QStringList filePath, int index, int charWidth, int ch
         char s=usedChar[t*charcount/256];
         value->append(s);
     }
-    QImage outImage(finalWidth,finalHeight,QImage::Format_Grayscale8);
+    QImage outImage;
+    if(color!=nullptr)
+        outImage=QImage(finalWidth,finalHeight,QImage::Format_RGB888);
+    else
+        outImage=QImage(finalWidth,finalHeight,QImage::Format_Grayscale8);
     QPainter painter(&outImage);
     if(style==0)
         painter.fillRect(outImage.rect(),Qt::white);
@@ -161,6 +181,8 @@ QImage Converter::convert(QStringList filePath, int index, int charWidth, int ch
             char c=value->at(k);
             font.setStretch(stretch[static_cast<int>(c)]);
             painter.setFont(font);
+            if(color!=nullptr)
+                painter.setPen(QPen(color->at(k)));
             painter.drawText(QRect(j*charWidth,i*charHeight,charWidth,charHeight),Qt::AlignCenter,QString(c));
             k++;
         }

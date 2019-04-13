@@ -2,8 +2,8 @@
 #include "ui_setbcdialog.h"
 #include "picdata.h"
 #include "converter.h"
-SetBCDialog::SetBCDialog(QWidget *parent, QStringList filePath, int charWidth, int charHeight, int finalWidth, int finalHeight, int style, char* usedChar, int charcount, int *stretch) :
-    QDialog(parent),ui(new Ui::SetBCDialog),mCharWidth(charWidth),mCharHeight(charHeight),mFinalWidth(finalWidth),mFinalHeight(finalHeight),mStyle(style),mUsedChar(usedChar),mCharCount(charcount),mStretch(stretch)
+SetBCDialog::SetBCDialog(QWidget *parent, QStringList filePath, int charWidth, int charHeight, int finalWidth, int finalHeight, int style, char* usedChar, int charcount, int *stretch, QList<QColor> *color) :
+    QDialog(parent),ui(new Ui::SetBCDialog),mCharWidth(charWidth),mCharHeight(charHeight),mFinalWidth(finalWidth),mFinalHeight(finalHeight),mStyle(style),mUsedChar(usedChar),mCharCount(charcount),mStretch(stretch),mColor(color)
 {
     ui->setupUi(this);
     setWindowState(Qt::WindowMaximized);
@@ -95,7 +95,7 @@ void SetBCDialog::drawPic()
 {
     ui->lbHint->setText(QString("第%1张/共%2张").arg(mIndex+1).arg(mCount));
     QByteArray charValue;
-    QImage outImage=Converter::convert(mFilePath,mIndex,mCharWidth,mCharHeight,mFinalWidth,mFinalHeight,mStyle,mBrightness,mContrast,mUsedChar,mCharCount,mStretch,&charValue);
+    QImage outImage=Converter::convert(mFilePath,mIndex,mCharWidth,mCharHeight,mFinalWidth,mFinalHeight,mStyle,mBrightness,mContrast,mUsedChar,mCharCount,mStretch,&charValue,mColor);
     mScene->clear();
     mScene->setBackgroundBrush(QBrush(Qt::lightGray));
     mScene->addPixmap(QPixmap::fromImage(outImage));
