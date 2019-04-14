@@ -648,6 +648,7 @@ int main(int argc, char *argv[])
                         }
                         stream<<"\033[0m";
                         txtFile.close();
+                        system(std::string("gzip -9 "+txtDir.absoluteFilePath(txtFile.fileName()).toStdString()).c_str());
 
                         completeCnt++;
 #pragma omp critical
